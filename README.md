@@ -56,7 +56,7 @@ To assign material to a component, select one or several components in the Assem
 * Select a custom density for the component
 
 ### Save file
-To save a file that you have been working on, select "File->Save file" in the menu bar. You will be prompted to select a folder and name for the saved file. If you have already selected the folder and file name, selecting "Save file" again will read over the previously selected file. 
+To save a file that you have been working on, select "File->Save file" in the menu bar. You will be prompted to select a folder and name for the saved file. If you have already selected the folder and file name, selecting "Save file" again will write over the previously selected file. 
 
 ### Geometric editing
 
