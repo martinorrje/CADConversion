@@ -41,7 +41,7 @@ conda install -c conda-forge python-graphviz
 
 ## Example
 In the examples folder are two files: `spider.json` and `slider_crank.json`. These have been created from the CADConversion program,
-and contains models with joints and materials associated with them. 
+and contains models with joints and materials associated with them. These can be loaded into the program by selecting "File->Open file" in the menu bar. 
 
 ### Generate graph from model
 To generate a JSON file containing physical properties for each component and joint, navigate to the menu bar and select Export->Export linear graph. You will be prompted to select the folder where a data.json file will be saved, together with two png images for a visualization of the rotation graph and the translation graph. 
@@ -54,6 +54,9 @@ To assign material to a component, select one or several components in the Assem
 * Select a predefined material, from which the density and mass of the component will be calculated
 * Select a custom mass for the component
 * Select a custom density for the component
+
+### Save file
+To save a file that you have been working on, select "File->Save file" in the menu bar. You will be prompted to select a folder and name for the saved file. If you have already selected the folder and file name, selecting "Save file" again will read over the previously selected file. 
 
 ### Geometric editing
 
