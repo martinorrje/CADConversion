@@ -16,7 +16,7 @@ import base64
 from OCC.Core.gp import gp_Trsf, gp_Pnt, gp_Dir, gp_Ax1
 from PyQt5 import QtWidgets
 
-from structures import Joint, Part
+from .structures import Joint, Part
 
 
 class Serializer:
@@ -60,7 +60,6 @@ class Serializer:
 
         # Extract the matrix components
         loc_matrix = [loc_trsf.Value(row + 1, col + 1) for row in range(3) for col in range(4)]
-
 
         return {
             "shape_data_base64": shape_data_base64,

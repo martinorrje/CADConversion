@@ -1,13 +1,11 @@
 import sys
-from mainwindow import MainWindow, dm
-from conversion import LinearGraphConverter
-from generate_graph import create_graph
-from serializer import Serializer
+from ui.mainwindow import MainWindow, dm
+from model.conversion import LinearGraphConverter, create_graph
+from model.serializer import Serializer
 
-import docmodel
+from model import docmodel
 
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import Qt
 
 lgc = LinearGraphConverter()
 serializer = Serializer()
@@ -56,7 +54,7 @@ def delete_components():
 
 
 def delete_joint():
-    win.delete_joint()
+    win.delete_selected_joints()
 
 
 def move_to_top():
@@ -83,7 +81,6 @@ if __name__ == "__main__":
     file_menu.addSeparator()
     win.add_function_to_menu("File", "Load STEP", load_step_at_top)
 
-    # Pop up menu when selecting component
     win.tree_view.component_pop_menu.addAction("Change material", win.change_material_window)
     win.tree_view.component_pop_menu.addAction("Combine components", merge_shapes)
     win.tree_view.component_pop_menu.addAction("Delete components", delete_components)
@@ -101,8 +98,5 @@ if __name__ == "__main__":
     convert_menu = win.add_menu("Export")
     win.add_function_to_menu("Export", "Export linear graph", export_linear_graph)
 
-
     win.setFocus()
-    # If this line is uncommented the user has to deselect and then select window again to access the menu bar
-    # win.raise_()
     sys.exit(app.exec_())

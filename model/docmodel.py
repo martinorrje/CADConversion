@@ -18,7 +18,7 @@ from OCC.Core.XCAFDoc import (
 )
 from PyQt5 import QtWidgets
 
-from structures import Part
+from .structures import Part
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # set to DEBUG | INFO | ERROR
@@ -100,7 +100,6 @@ class DocModel:
         root_label = labels.Value(1)
         self.root_shape = TopoDS_Shape()
         shape_tool.GetShape(root_label, self.root_shape)
-
 
         # Get root label information
         # The first label at root holds an assembly, it is the Top Assembly.
@@ -225,6 +224,7 @@ class DocModel:
         self.assembly_loc_stack.pop()
         self.parent_uid_stack.pop()
 
+
 def _load_step():
     """Allow user to select step file to load, create doc and app,
 
@@ -265,7 +265,7 @@ def load_step_at_top(dm):
 
     try:
         f_name, doc, app = _load_step()
-    except TypeError as e:
+    except TypeError:
         print("Load step cancelled")
         return
     logger.info("Transfer temp_doc to STEPCAFControl_Reader")

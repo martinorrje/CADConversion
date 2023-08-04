@@ -1,5 +1,3 @@
-import logging
-
 from OCC.Core.AIS import AIS_Line, AIS_Trihedron
 from OCC.Core.BRep import BRep_Tool
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
@@ -14,9 +12,9 @@ from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Ax1
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 
-from mainwindow import dm
-from structures import Joint
-from uiwidgets import MaterialDialog
+from .mainwindow import dm
+from model.structures import Joint
+from .uiwidgets import MaterialDialog
 
 
 class MaterialManager:
@@ -49,7 +47,7 @@ class MaterialManager:
     def change_material_preselected_density(self, uid):
         """The user chose a material from the QComboBox"""
         self._change_material(uid, density=
-        self.change_material_group.MATERIALS[self.change_material_group.select_density.currentText()])
+            self.change_material_group.MATERIALS[self.change_material_group.select_density.currentText()])
 
     def change_material_defined_density(self, uid):
         """The user specified a custom density"""
@@ -111,7 +109,7 @@ class JointManager:
         self.canvas._display.SetSelectionModeNeutral()
         self.canvas._display.SetSelectionMode(TopAbs_SHAPE)
         self.first_component = None
-        if self.second_component == None:
+        if self.second_component is None:
             self.joint_selection_widget.select_point2_button.setText('Select component 2')
         self.joint_selection_widget.select_point1_button.setText('Selecting component 1...')
         register_callback(self.joint_callback)
@@ -124,7 +122,7 @@ class JointManager:
         self.canvas._display.SetSelectionModeNeutral()
         self.canvas._display.SetSelectionMode(TopAbs_SHAPE)
         self.second_component = None
-        if self.first_component == None:
+        if self.first_component is None:
             self.joint_selection_widget.select_point1_button.setText('Select component 1')
         self.joint_selection_widget.select_point2_button.setText('Selecting component 2...')
         register_callback(self.joint_callback)
@@ -153,7 +151,6 @@ class JointManager:
             y_dir = float(self.joint_selection_widget.line_edit_y.text())
             z_dir = float(self.joint_selection_widget.line_edit_z.text())
         except ValueError:
-            logger.log(logging.ERROR, "All axis directions have not been inputted")
             return
         # If an axis was already submitted for this joint, remove it
         if self.ais_axis is not None:

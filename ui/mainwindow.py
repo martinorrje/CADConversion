@@ -1,5 +1,3 @@
-import logging
-
 import OCC.Display.backend
 from OCC.Core.AIS import AIS_Shape, AIS_Trihedron
 from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Fuse
@@ -21,19 +19,16 @@ from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Lin, gp_Trsf
 from PyQt5.QtCore import Qt
 from PyQt5 import QtWidgets
 
-from docmodel import DocModel
+from model.docmodel import DocModel
 
 used_backend = OCC.Display.backend.load_backend()
 dm = DocModel()
 
-from structures import Part
-from mainwindow_managers import MaterialManager, JointManager
-from uiwidgets import TreeView, JointSelectionWidget
+from model.structures import Part
+from .mainwindow_managers import MaterialManager, JointManager
+from .uiwidgets import TreeView, JointSelectionWidget
 
 from OCC.Display import qtDisplay
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # set to DEBUG | INFO | ERROR
 
 
 class SnappingLogic:
@@ -419,13 +414,11 @@ class MainWindow(QtWidgets.QMainWindow):
         assert callable(_callable), "the function supplied is not callable"
         try:
             _action = QtWidgets.QAction(text, self)
-            # if not, the "exit" action is now shown...
-            # Qt is trying so hard to be native cocoa'ish that its a nuisance
             _action.setMenuRole(QtWidgets.QAction.NoRole)
             _action.triggered.connect(_callable)
             self._menus[menu_name].addAction(_action)
         except KeyError:
-            raise ValueError("the menu item %s does not exist" % (menu_name))
+            raise ValueError("the menu item %s does not exist" % menu_name)
 
     def update_parentuid(self):
         """Updates the parent_uid entries in label_dict, after dm.parent_dict has been updated"""
@@ -443,7 +436,6 @@ class MainWindow(QtWidgets.QMainWindow):
         parent_item_dict = {}
         for uid, dict_, in dm.label_dict.items():
             # dict: {keys: 'entry', 'name', 'parent_uid', 'ref_entry'}
-            entry = dict_["entry"]
             name = dict_["name"]
             parent_uid = dict_["parent_uid"]
             if parent_uid not in parent_item_dict:
@@ -525,7 +517,6 @@ class MainWindow(QtWidgets.QMainWindow):
         context = self.canvas._display.Context
         if uid:
             part_data = dm.part_dict[uid]
-            shape = part_data.shape
             try:
                 ais_shape = self.ais_shape_dict[uid]
                 color = Quantity_Color(0.5, 0.5, 0.8,
@@ -768,6 +759,15 @@ class MainWindow(QtWidgets.QMainWindow):
         for uid, child_list in dm.parent_dict.items():
             if uid in child_list:
                 child_list.remove(uid)
+
+    def delete_joints_belonging_to_component(self, uid):
+        joints_to_delete = []
+        for joint_uid, joint in self.joint_dict.items():
+            if joint.parent_uid == uid or joint.child_uid == uid:
+                joints_to_delete.append(joint_uid)
+        for joint_uid in joints_to_delete:
+            self.delete_joint(joint_uid)
+
     def delete_components_rec(self, uid):
         if uid in dm.part_dict:
             self.erase_tree_object(uid)
@@ -776,6 +776,7 @@ class MainWindow(QtWidgets.QMainWindow):
             del dm.label_dict[uid]
             if uid in dm.parent_dict:
                 del dm.parent_dict[uid]
+            self.delete_joints_belonging_to_component(uid)
             return
         elif uid in dm.label_dict and dm.label_dict[uid]["is_assembly"]:
             for child_uid in dm.parent_dict[uid]:
@@ -790,24 +791,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 dm.parent_dict[dm.label_dict[uid]["parent_uid"]].remove(uid)
             self.delete_components_rec(uid)
             self.update_parent_lists(uid)
-
-        # After deleting components, rebuild the tree and redraw the scene
         self.build_tree()
         self.canvas._display.Context.UpdateCurrentViewer()
 
-    def delete_joint(self):
+    def delete_joint(self, uid):
+        for i in range(self.joint_view_root.childCount()):
+            child = self.joint_view_root.child(i)
+            if child.text(1) == uid:
+                self.joint_view_root.takeChild(i)
+                break
+        self.remove_joint(uid)
+        del self.joint_manager.joint_dict[uid]
+
+    def delete_selected_joints(self):
         """Delete all joints that have been selected in the tree view"""
         for uid in self.items_clicked_uid:
             # Delete from joint dictionary
             if uid in self.joint_manager.joint_dict:
-                for i in range(self.joint_view_root.childCount()):
-                    child = self.joint_view_root.child(i)
-                    if child.text(1) == uid:
-                        self.joint_view_root.takeChild(i)
-                        break
-                self.remove_joint(uid)
-                del self.joint_manager.joint_dict[uid]
-
+                self.delete_joint(uid)
         self.canvas._display.Context.UpdateCurrentViewer()
 
     def update_parent_after_move_top(self, uid):

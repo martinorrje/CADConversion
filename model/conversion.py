@@ -1,3 +1,6 @@
+import os
+
+import graphviz
 from OCC.Core.BRepGProp import brepgprop_VolumeProperties
 from OCC.Core.GProp import GProp_GProps
 
@@ -5,7 +8,7 @@ import json
 
 from PyQt5 import QtWidgets
 
-from structures import JointProperty, PartProperty
+from .structures import JointProperty, PartProperty
 
 link_endpoint_count = {}
 
@@ -41,7 +44,7 @@ class LinearGraphConverter:
             com = properties.CentreOfMass()
 
             if self.part_properties[uid].mass is None:
-                if self.part_properties[uid].density != None:
+                if self.part_properties[uid].density is not None:
                     mass = properties.Mass() * self.part_properties[uid].density
                     print(f"{self.part_properties[uid].name}: {mass}")
                 else:
@@ -250,3 +253,21 @@ class LinearGraphConverter:
         with open(json_file, 'w') as file:
             json.dump(existing_data, file, indent=4)
 
+
+def create_graph(json_file, graph_type):
+    with open(json_file, 'r') as file:
+        data = json.load(file)
+
+    # Create a new directed graph
+    graph = graphviz.Digraph(format='png')
+
+    # Add the vertices (nodes)
+    for vertex in data[graph_type]['vertices']:
+        graph.node(vertex['name'])
+
+    # Add the edges
+    for edge in data[graph_type]['edges']:
+        graph.edge(edge['from'], edge['to'], label=edge['label'])
+
+    # Save the graph to a file
+    graph.render(filename=f'{graph_type}', directory=os.path.dirname(json_file) + '/', cleanup=True)

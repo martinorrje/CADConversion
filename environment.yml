@@ -1,0 +1,7 @@
+name: CADConversionGUI
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pyqt
+  - pythonocc-core
