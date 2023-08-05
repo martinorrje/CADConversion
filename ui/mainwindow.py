@@ -205,7 +205,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.center_screen()
 
         # Specify the tree view that display the component hierarchy of the step model
-        self.joint_view_root, self.tree_view_root = self.create_root_items()
+        self.joint_view_root, self.component_view_root = self.create_root_items()
         self.items_clicked_uid = set()  # The items in the tree view that have been clicked
 
         self.ais_shape_dict = {}
@@ -226,6 +226,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.material_manager = MaterialManager(self)
 
         self.combined_uid = 0
+
+        self.create_datum_origin()
+        self.origin_datum_item = self.create_origin_datum_item()
+        self.tree_view.expandItem(self.origin_datum_item)
+        self.display_origin = True
+        self.origin_checked = True
 
     @property
     def joint_dict(self):
@@ -264,6 +270,35 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def finish_material_selection(self):
         self.material_manager.finish_material_selection()
+
+    def create_datum_origin(self):
+        """Displays a datum trihedron at the origin"""
+        dir = gp_Dir(0, 0, 1)
+        x_dir = gp_Dir(1, 0, 0)
+        loc = Geom_Axis2Placement(gp_Pnt(0, 0, 0), dir,
+                                  x_dir)
+        self.origin_trihedron = AIS_Trihedron(loc)
+        self.origin_trihedron.SetDrawArrows(True)
+        self.origin_trihedron.SetSize(5)
+        self.origin_trihedron.SetDatumPartColor(Prs3d_DatumParts_XAxis, Quantity_Color(Quantity_NOC_RED))
+        self.origin_trihedron.SetDatumPartColor(Prs3d_DatumParts_YAxis, Quantity_Color(Quantity_NOC_GREEN))
+        self.origin_trihedron.SetDatumPartColor(Prs3d_DatumParts_ZAxis, Quantity_Color(Quantity_NOC_BLUE))
+        self.canvas._display.Context.Display(self.origin_trihedron, True)
+
+    def create_origin_datum_item(self):
+        origin_datum_item = QtWidgets.QTreeWidgetItem(self.component_view_root, ["Datum origin", "_datum_origin"])
+        origin_datum_item.setFlags(
+            origin_datum_item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable | Qt.ItemIsEditable)
+        origin_datum_item.setCheckState(0, Qt.Checked)
+        return origin_datum_item
+
+    def display_datum_origin(self):
+        self.canvas._display.Context.Display(self.origin_trihedron, True)
+        self.display_origin = True
+
+    def remove_datum_origin(self):
+        self.canvas._display.Context.Erase(self.origin_trihedron, True)
+        self.display_origin = False
 
     def create_root_items(self):
         components_view_root = QtWidgets.QTreeWidgetItem(self.tree_view, ["Components"])
@@ -318,16 +353,19 @@ class MainWindow(QtWidgets.QMainWindow):
     def unchecked_to_list(self):
         """Return list of uid's of unchecked (part & wp) items in treeView."""
         dl = []
+        self.origin_checked = True
         for item in self.tree_view.findItems("", Qt.MatchContains | Qt.MatchRecursive):
             if item.checkState(0) == Qt.Unchecked:
                 uid = item.text(1)
                 if (uid in dm.part_dict) or (uid in self.joint_manager.joint_dict):
                     dl.append(uid)
+                elif uid == "_datum_origin":
+                    self.origin_checked = False
         return dl
 
     def hidden_in_sync(self):
-        """Check if the unchecked items in the tree view are synced with the hidden components that are not
-        being drawn"""
+        """Check if the unchecked items in the tree view are
+        synced with the hidden components that are not being drawn"""
         return set(self.unchecked_to_list()) == self.hide_list
 
     def selected_in_sync(self):
@@ -387,8 +425,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.adjust_selected_items()
 
     def tree_view_item_clicked(self, item):
-        """Called when an item in the tree view is checked or unchecked, indicating it should be hidden or unhidden."""
-        if not self.hidden_in_sync():
+        """Called when an item in the tree view is checked or unchecked, indicating it should be hidden or unhidden.
+        First check if the datum origin should be displayed."""
+        in_sync = self.hidden_in_sync()
+        if self.display_origin is True and self.origin_checked is False:
+            self.remove_datum_origin()
+        elif self.display_origin is False and self.origin_checked is True:
+            self.display_datum_origin()
+        if not in_sync:
             self.adjust_draw_hide()
 
     def context_menu(self, q_point):
@@ -403,7 +447,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def clear_tree(self):
         self.tree_view.clear()
-        self.joint_view_root, self.tree_view_root = self.create_root_items()
+        self.joint_view_root, self.component_view_root = self.create_root_items()
+        self.origin_datum_item = self.create_origin_datum_item()
 
     def add_menu(self, menu_name):
         _menu = self.menu_bar.addMenu("&" + menu_name)
@@ -434,12 +479,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.clear_tree()
         self.assembly_list = []
         parent_item_dict = {}
+        if self.origin_checked:
+            self.origin_datum_item.setCheckState(0, Qt.Checked)
+        else:
+            self.origin_datum_item.setCheckState(0, Qt.Unchecked)
+        self.tree_view.expandItem(self.origin_datum_item)
         for uid, dict_, in dm.label_dict.items():
             # dict: {keys: 'entry', 'name', 'parent_uid', 'ref_entry'}
             name = dict_["name"]
             parent_uid = dict_["parent_uid"]
             if parent_uid not in parent_item_dict:
-                parent_item = self.tree_view_root
+                parent_item = self.component_view_root
             else:
                 parent_item = parent_item_dict[parent_uid]
 
@@ -577,6 +627,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for uid in self.joint_manager.joint_dict:
             if uid not in self.hide_list:
                 self.draw_joint(uid)
+        if self.display_origin:
+            self.display_datum_origin()
         context.UpdateCurrentViewer()
 
     def fit_all(self):
@@ -606,14 +658,15 @@ class MainWindow(QtWidgets.QMainWindow):
         compound_shape = TopoDS_Compound()
         builder.MakeCompound(compound_shape)
 
-        for child_uid in dm.parent_dict[uid]:
-            child_shape = self.merge_assembly_shapes(child_uid)
-            # Make sure the child_shape is valid before fusing
-            if not child_shape.IsNull():
-                # Fuse the child_shape with the existing compound_shape
-                fused_shape = BRepAlgoAPI_Fuse(compound_shape, child_shape).Shape()
-                # Update the compound_shape with the fused result
-                compound_shape = fused_shape
+        if uid in dm.parent_dict:
+            for child_uid in dm.parent_dict[uid]:
+                child_shape = self.merge_assembly_shapes(child_uid)
+                # Make sure the child_shape is valid before fusing
+                if not child_shape.IsNull():
+                    # Fuse the child_shape with the existing compound_shape
+                    fused_shape = BRepAlgoAPI_Fuse(compound_shape, child_shape).Shape()
+                    # Update the compound_shape with the fused result
+                    compound_shape = fused_shape
 
         return compound_shape
 
@@ -723,6 +776,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def merge_shapes(self):
         """Merge shapes by combining all selected components into one shape"""
+        if "_datum_origin" in self.items_clicked_uid:
+            return
         if len(self.items_clicked_uid) > 1:
             self.merge_components_shapes()
         elif len(self.items_clicked_uid) == 1:
@@ -744,13 +799,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def erase_assembly(self, uid):
         """Erase an assembly together with all of its subcomponents"""
-        del dm.label_dict[uid]
+        if uid in dm.label_dict:
+            del dm.label_dict[uid]
         if uid in dm.part_dict:
             self.erase_tree_object(uid)
             del dm.part_dict[uid]
             return
-        for child_uid in dm.parent_dict[uid]:
-            self.erase_assembly(child_uid)
+        if uid in dm.parent_dict:
+            for child_uid in dm.parent_dict[uid]:
+                self.erase_assembly(child_uid)
 
     def update_parent_lists(self, uid):
         """For an erased component with uid, erase all dm.parent_dict entries of this uid"""

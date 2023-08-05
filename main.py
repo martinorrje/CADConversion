@@ -15,6 +15,7 @@ def open_doc():
     result = serializer.load_model()
     if result is None:
         return
+    win.tree_view.clearSelection()
     win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict = result
     win.find_root()
     win.update_parentuid()
@@ -39,6 +40,8 @@ def load_step_at_top():
     dm.parent_dict = {}
     win.joint_dict = {}
     win.ais_shape_dict = {}
+    win.hide_list = set()
+    win.tree_view.clearSelection()
     docmodel.load_step_at_top(dm)
     win.build_tree()
     win.redraw()

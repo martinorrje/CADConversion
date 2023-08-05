@@ -8,9 +8,6 @@ class TreeView(QtWidgets.QTreeWidget):
         super().__init__(parent)
         self.header().setHidden(True)
         self.setSelectionMode(self.ExtendedSelection)  # Multiple items can be selected at the same time
-        self.setDragDropMode(self.InternalMove)  # Can move items within the widget
-        self.setDragEnabled(True)  # Can drag the items in the widget
-        self.setDropIndicatorShown(True)  # Visual indicator shown while dragging items
         self.setContextMenuPolicy(Qt.CustomContextMenu)  # Custom context menu when right-clicking items
         self.customContextMenuRequested.connect(
             self.context_menu)  # Specify context menu shown when right-clicking items
@@ -44,7 +41,7 @@ class TreeView(QtWidgets.QTreeWidget):
 
     def context_menu(self, q_point):
         item = self.itemAt(q_point)
-        if not item:
+        if not item or item.text(1) == "_datum_origin":
             return
         if self.is_component(item):
             self.component_pop_menu.exec_(self.mapToGlobal(q_point))
