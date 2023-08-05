@@ -18,9 +18,9 @@ cd CADConversion
 conda env create -f environment.yml
 ```
 5. Activate the conda environment: 
-````bash
+```bash
 conda activate CADConversionGUI
-````
+```
 
 ## Usage
 
@@ -45,6 +45,9 @@ and contains models with joints and materials associated with them. These can be
 
 ### Generate graph from model
 To generate a JSON file containing physical properties for each component and joint, navigate to the menu bar and select Export->Export linear graph. You will be prompted to select the folder where a data.json file will be saved, together with two png images for a visualization of the rotation graph and the translation graph. 
+
+### Units
+The current units are gram for mass, and mm for length. The inertia matrix elements are in g*mm^2, and the provided density and mass values specified in the material selection dialog should be in g/mm^3 and g respectively. 
 
 ### Create joint
 To create a joint, select Joints->Add joint in the menu bar. A widget will appear in the right part of the screen. Here you can select the two components belonging to the joint by pressing the corresponding "Select component" button, hovering over the component you want to select and clicking to select. To select a joint origin for the joint, press the "Select joint origin" button and navigate your mouse pointer to the desired joint origin. A trihedron will appear at the mouse, which snaps to geometric features such as faces, vertices, edges and circular features. 
