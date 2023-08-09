@@ -45,7 +45,7 @@ class TreeView(QtWidgets.QTreeWidget):
             return
         if self.is_component(item):
             self.component_pop_menu.exec_(self.mapToGlobal(q_point))
-        else:
+        elif item is not self.components_parent:
             self.joint_pop_menu.exec_(self.mapToGlobal(q_point))
 
 
