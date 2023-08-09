@@ -1,4 +1,6 @@
-import OCC.Display.backend
+from PyQt5.QtCore import Qt
+from PyQt5 import QtWidgets
+
 from OCC.Core.AIS import AIS_Shape, AIS_Trihedron
 from OCC.Core.BRepAlgoAPI import BRepAlgoAPI_Fuse
 from OCC.Core.BRepExtrema import BRepExtrema_DistShapeShape
@@ -16,10 +18,11 @@ from OCC.Core.Quantity import Quantity_Color, Quantity_NOC_RED, Quantity_NOC_GRE
     Quantity_TOC_RGB, Quantity_NOC_GRAY
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
 from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Lin, gp_Trsf
-from PyQt5.QtCore import Qt
-from PyQt5 import QtWidgets
 
 from model.docmodel import DocModel
+
+import OCC.Display.backend
+import OCC.Display.OCCViewer
 
 used_backend = OCC.Display.backend.load_backend()
 dm = DocModel()
@@ -29,6 +32,10 @@ from .mainwindow_managers import MaterialManager, JointManager
 from .uiwidgets import TreeView, JointSelectionWidget
 
 from OCC.Display import qtDisplay
+from OCC import VERSION
+
+
+print(f"OCC Version {VERSION}")
 
 
 class SnappingLogic:
