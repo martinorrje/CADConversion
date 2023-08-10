@@ -1,4 +1,4 @@
-from OCC.Core.AIS import AIS_Line, AIS_Trihedron
+from OCC.Core.AIS import AIS_Line, AIS_Trihedron, AIS_Shape_SelectionMode
 from OCC.Core.BRep import BRep_Tool
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
 from OCC.Core.Geom import Geom_Line, Geom_Axis2Placement
@@ -135,9 +135,13 @@ class JointManager:
         if self.joint_origin_trihedron is not None:
             self.canvas._display.Context.Erase(self.joint_origin_trihedron, True)
         self.joint_selection_widget.select_origin_button.setText('Selecting joint origin...')
-        self.canvas._display.SetSelectionMode(TopAbs_VERTEX)
-        self.canvas._display.SetSelectionMode(TopAbs_EDGE)
-        self.canvas._display.SetSelectionMode(TopAbs_FACE)
+
+        self.canvas._display.SetSelectionModeNeutral()
+        self.canvas._display.Context.Activate(AIS_Shape_SelectionMode(TopAbs_FACE), True)
+        self.canvas._display.Context.Activate(AIS_Shape_SelectionMode(TopAbs_EDGE), True)
+        self.canvas._display.Context.Activate(AIS_Shape_SelectionMode(TopAbs_VERTEX), True)
+        self.canvas._display.Context.UpdateSelected(True)
+
         register_callback(self.origin_callback)
         self.canvas.start_displaying_origin()
 
