@@ -34,11 +34,6 @@ conda activate CADConversionGUI
 python3 main.py
 ```
 
-NOTE: If you get error messages complaining about not finding `graphviz` module, try installing it manually with 
-```bash
-conda install -c conda-forge python-graphviz
-```
-
 ## Example
 In the examples folder are two files: `spider.json` and `slider_crank.json`. These have been created from the CADConversion program,
 and contain models with joints and materials associated with them. These can be loaded into the program by selecting "File->Open file" in the menu bar. 
