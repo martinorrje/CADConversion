@@ -1,3 +1,4 @@
+import os
 import sys
 from ui.mainwindow import MainWindow, dm
 from model.conversion import LinearGraphConverter, create_graph
@@ -20,23 +21,25 @@ def open_doc():
         return
     win.tree_view.clearSelection()
     win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, f_path = result
-    win.file_to_watch = f_path
 
-    new_dm = docmodel.DocModel()
-    docmodel.load_step_at_top_fpath(new_dm, f_path)
+    if os.path.exists(f_path):
+        win.file_to_watch = f_path
 
-    if not docmodel.same_doc_model(dm, new_dm):
-        result = win.show_update_model_popup()
-        if result is False:
-            win.build_tree()
-            win.redraw()
+        new_dm = docmodel.DocModel()
+        docmodel.load_step_at_top_fpath(new_dm, f_path)
 
-    if watcher is None:
-        watcher = Watcher(f_path, win)
-    else:
-        watcher.stop()
-        watcher.watch_new_file(f_path)
-    watcher.run()
+        if not docmodel.same_doc_model(dm, new_dm):
+            result = win.show_update_model_popup()
+            if result is False:
+                win.build_tree()
+                win.redraw()
+
+        if watcher is None:
+            watcher = Watcher(f_path, win)
+        else:
+            watcher.stop()
+            watcher.watch_new_file(f_path)
+        watcher.run()
 
     win.find_root()
     win.update_parentuid()

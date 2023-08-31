@@ -260,7 +260,8 @@ class MaterialDialog(QtWidgets.QGroupBox):
 
         self.setLayout(layout)
         self.resize(layout_size)
-        self.move(self.parent().geometry().center() / 2 - self.geometry().center() / 2)
+        self.resize(600, 400)
+        self.move(100, 100)
         color = self.palette().color(QPalette.Background)
         self.setStyleSheet(
             "QGroupBox { background-color: rgba(%i, %i, %i, 255); }" % (color.red(), color.green(), color.blue()))
