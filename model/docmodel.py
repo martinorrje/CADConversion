@@ -36,6 +36,7 @@ def create_doc():
 class DocModel:
     def __init__(self):
         self.doc, self.app = create_doc()
+        self.previous_label_dict = None
 
         # Used by redraw()
         self.part_dict = {}  # {uid : Part}
@@ -84,6 +85,7 @@ class DocModel:
         self._share_dict = {'0:1:1': 0}  # {entry : serial_number}
         self.part_dict = {}
         self.label_dict = {}
+        self.parent_dict = {}
         # Temporary use during unpacking
         self.parent_uid_stack = []  # uid of parent (topmost first)
         self.assembly_entry_stack = ['0:1:1']  # [entries of containing assemblies]
@@ -107,10 +109,15 @@ class DocModel:
         # There is no need to explicitly examine other labels at root.
         # Also, the first label at root (Top Assembly) is the only label
         # at root represented in the tree view (in label_dict)
-        root_name = root_label.GetLabelName()
         root_entry = root_label.EntryDumpToString()
         root_uid = self.get_uid_from_entry(root_entry)
         loc = shape_tool.GetLocation(root_label)  # <TopLoc_Location>
+
+        if self.previous_label_dict is not None and root_uid in self.previous_label_dict:
+            root_name = self.previous_label_dict[root_uid]["name"]
+        else:
+            root_name = root_label.GetLabelName()
+
         self.assembly_loc_stack.append(loc)
         self.assembly_entry_stack.append(root_entry)
         self.label_dict = {root_uid: {'entry': root_entry, 'name': root_name,
@@ -144,10 +151,13 @@ class DocModel:
             logger.debug("Assembly_entry_stack: %s", self.assembly_entry_stack)
             logger.debug("loop %i of %i", j + 1, comps.Length())
             c_label = comps.Value(j + 1)  # component label <class 'TDF_Label'>
-            c_name = c_label.GetLabelName()
             c_entry = c_label.EntryDumpToString()
             c_uid = self.get_uid_from_entry(c_entry)
             c_shape = shape_tool.GetShape(c_label)
+            if self.previous_label_dict is not None and c_uid in self.previous_label_dict:
+                c_name = self.previous_label_dict[c_uid]["name"]
+            else:
+                c_name = c_label.GetLabelName()
             logger.debug("Component number %i", j + 1)
             logger.debug("Component name: %s", c_name)
             logger.debug("Component entry: %s", c_entry)
@@ -240,6 +250,12 @@ def _load_step():
         print("Load step cancelled")
         return
 
+    doc, app = load_step_fpath(f_path)
+
+    return f_path, doc, app
+
+
+def load_step_fpath(f_path):
     # Create a new instance of DocModel for the step file
     doc, app = create_doc()
 
@@ -254,7 +270,7 @@ def _load_step():
     if status == IFSelect_RetDone:
         logger.info("Transfer doc to STEPCAFControl_Reader")
         step_reader.Transfer(doc)
-    return step_file_name, doc, app
+    return doc, app
 
 
 def load_step_at_top(dm):
@@ -264,7 +280,7 @@ def load_step_at_top(dm):
     been saved as a STEP file."""
 
     try:
-        f_name, doc, app = _load_step()
+        f_path, doc, app = _load_step()
     except TypeError:
         print("Load step cancelled")
         return
@@ -272,3 +288,18 @@ def load_step_at_top(dm):
     dm.doc = doc
     dm.app = app
     dm.parse_doc()
+    return f_path
+
+
+def load_step_at_top_fpath(dm, f_path):
+    logger.info("Transfer temp_doc to STEPCAFControl_Reader")
+    doc, app = load_step_fpath(f_path)
+    dm.previous_label_dict = dm.label_dict
+    dm.doc = doc
+    dm.app = app
+    dm.parse_doc()
+    dm.previous_label_dict = None
+
+
+def same_doc_model(dm_one, dm_two):
+    return dm_one.label_dict == dm_two.label_dict and dm_one.part_dict == dm_two.part_dict

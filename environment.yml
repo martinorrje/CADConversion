@@ -7,3 +7,4 @@ dependencies:
   - pyqt
   - pythonocc-core
   - python-graphviz
+  - watchdog

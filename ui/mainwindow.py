@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5 import QtWidgets
 
 from OCC.Core.AIS import AIS_Shape, AIS_Trihedron
@@ -19,7 +19,7 @@ from OCC.Core.Quantity import Quantity_Color, Quantity_NOC_RED, Quantity_NOC_GRE
 from OCC.Core.BRepAdaptor import BRepAdaptor_Curve
 from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Lin, gp_Trsf
 
-from model.docmodel import DocModel
+from model.docmodel import DocModel, load_step_at_top_fpath, load_step_fpath
 
 import OCC.Display.backend
 import OCC.Display.OCCViewer
@@ -29,7 +29,7 @@ dm = DocModel()
 
 from model.structures import Part
 from .mainwindow_managers import MaterialManager, JointManager
-from .uiwidgets import TreeView, JointSelectionWidget
+from .uiwidgets import TreeView, JointSelectionWidget, ModelUpdateWidget
 
 from OCC.Display import qtDisplay
 from OCC import VERSION
@@ -201,6 +201,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize(960, 720)
         self.setCentralWidget(self.canvas)
 
+        self.file_to_watch = None                   # This will be assigned the file path of the loaded step file
+        self.model_update_widget = ModelUpdateWidget(self)
+        self.saved_doc = None
+        self.saved_app = None
+
         # create_dock_widget initializes tree_view and tree_dock_widget that display the component tree view
         self.tree_view = None
         self.tree_dock_widget = None
@@ -352,6 +357,17 @@ class MainWindow(QtWidgets.QMainWindow):
             `column` is the column index of the changed cell"""
         new_name = item.text(column)
         uid = item.text(1)
+
+        # If the default joint name was used, update it
+        for _, joint in self.joint_dict.items():
+            if joint.parent_uid == uid or joint.child_uid == uid:
+                if joint.name == f"{dm.label_dict[joint.parent_uid]['name']} to {dm.label_dict[joint.child_uid]['name']}":
+                    if joint.parent_uid == uid:
+                        joint.name = f"{new_name} to {dm.label_dict[joint.child_uid]['name']}"
+                        joint.item.setText(0, joint.name)
+                    else:
+                        joint.name = f"{dm.label_dict[joint.parent_uid]['name']} to {new_name}"
+                        joint.item.setText(0, joint.name)
         if uid in dm.label_dict:
             dm.label_dict[uid]["name"] = new_name
         if uid in dm.part_dict:
@@ -491,6 +507,18 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.origin_datum_item.setCheckState(0, Qt.Unchecked)
         self.tree_view.expandItem(self.origin_datum_item)
+
+        for uid, joint in self.joint_manager.joint_dict.items():
+            first_component = joint.first_component
+            second_component = joint.second_component
+            item = QtWidgets.QTreeWidgetItem(self.joint_view_root,
+                                             [f"{first_component} to {second_component}",
+                                              uid])
+            item.setFlags(item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+            item.setCheckState(0, Qt.Checked)
+            joint.item = item
+            self.tree_view.expandItem(item)
+
         for uid, dict_, in dm.label_dict.items():
             # dict: {keys: 'entry', 'name', 'parent_uid', 'ref_entry'}
             name = dict_["name"]
@@ -512,16 +540,6 @@ class MainWindow(QtWidgets.QMainWindow):
             parent_item_dict[uid] = item
             if dict_["is_assembly"]:
                 self.assembly_list.append(uid)
-
-        for uid, joint in self.joint_manager.joint_dict.items():
-            first_component = joint.first_component
-            second_component = joint.second_component
-            item = QtWidgets.QTreeWidgetItem(self.joint_view_root,
-                                             [f"{first_component} to {second_component}",
-                                              uid])
-            item.setFlags(item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-            item.setCheckState(0, Qt.Checked)
-            self.tree_view.expandItem(item)
 
     def adjust_draw_hide(self):
         """Erase from 3D display any item that gets unchecked, draw when checked."""
@@ -894,3 +912,34 @@ class MainWindow(QtWidgets.QMainWindow):
             if dm.label_dict[uid]["parent_uid"] is None:
                 dm.root_uid = uid
                 return
+
+    @pyqtSlot()
+    def show_update_model_popup(self):
+        self.model_update_widget.show()
+        result = self.model_update_widget.exec_()
+        if result == QtWidgets.QDialog.Accepted:
+            # Update the model
+            load_step_at_top_fpath(dm=dm, f_path=self.file_to_watch)
+            self.build_tree()
+            self.redraw()
+            return True
+        elif result == QtWidgets.QDialog.Rejected:
+            doc, app = load_step_fpath(f_path=self.file_to_watch)
+            self.saved_doc = doc
+            self.saved_app = app
+            return False
+
+    def load_saved_modified_step(self):
+        if self.saved_doc is None or self.saved_app is None:
+            return
+        dm.previous_label_dict = dm.label_dict
+        dm.doc = self.saved_doc
+        dm.app = self.saved_app
+        dm.parse_doc()
+        dm.previous_label_dict = None
+        self.build_tree()
+        self.redraw()
+
+        self.saved_doc = None
+        self.saved_app = None
+

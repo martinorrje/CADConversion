@@ -127,6 +127,18 @@ class JointManager:
         self.joint_selection_widget.select_point2_button.setText('Selecting component 2...')
         register_callback(self.joint_callback)
 
+    def joint_callback(self, shape, *args):
+        """Called when the button to select the first or the second component for the joint is pressed."""
+        if len(shape) == 1 and isinstance(shape[0], TopoDS_Shape):
+            if self.current_point_number == 1:
+                self.parent_uid, self.first_component = self.get_component_name(shape[0])
+                self.joint_selection_widget.select_point1_button.setText(f'{self.first_component} selected')
+            elif self.current_point_number == 2:
+                self.child_uid, self.second_component = self.get_component_name(shape[0])
+                self.joint_selection_widget.select_point2_button.setText(f'{self.second_component} selected')
+            self.clear_callback()
+            self.current_point_number = 0
+
     def select_origin(self, register_callback):
         """Select the origin for the current joint"""
         if not self.first_component or not self.second_component:
@@ -243,7 +255,7 @@ class JointManager:
         item.setFlags(item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
         item.setCheckState(0, Qt.Checked)
         tree_view.expandItem(item)
-        self.add_joint_to_dict()
+        self.add_joint_to_dict(item)
 
         self.clear_joint_parameters()
 
@@ -266,7 +278,7 @@ class JointManager:
         elif joint_type == 0 or joint_type == 1:
             self.joint_selection_widget.set_line_edits(True)
 
-    def add_joint_to_dict(self):
+    def add_joint_to_dict(self, item):
         self.joint_dict[f"joint_{self.current_joint_uid}"] = Joint(first_component=self.first_component,
                                                                    second_component=self.second_component,
                                                                    parent_uid=self.parent_uid,
@@ -277,20 +289,9 @@ class JointManager:
                                                                    axis_line=self.ais_axis,
                                                                    joint_type=self.joint_type,
                                                                    joint_friction=self.joint_friction if
-                                                                   self.joint_friction is not None else 0)
+                                                                   self.joint_friction is not None else 0,
+                                                                   item=item)
         self.current_joint_uid += 1
-
-    def joint_callback(self, shape, *args):
-        """Called when either the button to select either the first or the second component for the joint is pressed."""
-        if len(shape) == 1 and isinstance(shape[0], TopoDS_Shape):
-            if self.current_point_number == 1:
-                self.parent_uid, self.first_component = self.get_component_name(shape[0])
-                self.joint_selection_widget.select_point1_button.setText(f'{self.first_component} selected')
-            elif self.current_point_number == 2:
-                self.child_uid, self.second_component = self.get_component_name(shape[0])
-                self.joint_selection_widget.select_point2_button.setText(f'{self.second_component} selected')
-            self.clear_callback()
-            self.current_point_number = 0
 
     def cancel_component_selection(self):
         """Called when the visibility of the joint selection widget is changed. This can happen when:
@@ -342,3 +343,4 @@ class JointManager:
             if shape.IsEqual(solid_shape):
                 return uid, part.name
         return None, None
+

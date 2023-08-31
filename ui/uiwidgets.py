@@ -305,3 +305,24 @@ class MaterialDialog(QtWidgets.QGroupBox):
         else:
             self.input_density_option.setEnabled(False)
             self.select_density.setEnabled(False)
+
+
+class ModelUpdateWidget(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(ModelUpdateWidget, self).__init__(parent)
+
+        layout = QtWidgets.QVBoxLayout()
+
+        label = QtWidgets.QLabel("The currently loaded step file has been modified. Do you want to update the model?")
+        layout.addWidget(label)
+
+        buttonBox = QtWidgets.QDialogButtonBox(Qt.Horizontal)
+        buttonBox.addButton("Yes", QtWidgets.QDialogButtonBox.YesRole)
+        buttonBox.addButton("No", QtWidgets.QDialogButtonBox.NoRole)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+        layout.addWidget(buttonBox, alignment=Qt.AlignBottom | Qt.AlignRight)
+
+        self.setLayout(layout)

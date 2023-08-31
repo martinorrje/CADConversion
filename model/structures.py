@@ -1,6 +1,6 @@
 class Joint:
     def __init__(self, first_component, second_component, parent_uid, child_uid,
-                 origin, axis, center_trihedron, axis_line, joint_type, joint_friction):
+                 origin, axis, center_trihedron, axis_line, joint_type, joint_friction, item=None):
         self.first_component = first_component
         self.second_component = second_component
         self.name = f"{first_component} to {second_component}"
@@ -12,6 +12,7 @@ class Joint:
         self.axis_line = axis_line
         self.joint_type = joint_type
         self.joint_friction = joint_friction
+        self.item = item
 
 
 class JointProperty:

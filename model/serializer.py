@@ -165,10 +165,11 @@ class Serializer:
         part_dict = {uid: self.deserialize_part(part_data) for uid, part_data in loaded_data["parts"].items()}
         label_dict = loaded_data["labels"]
         parent_dict = loaded_data["parents"]
+        f_path = loaded_data["file_path"]
 
-        return joint_dict, part_dict, label_dict, parent_dict
+        return joint_dict, part_dict, label_dict, parent_dict, f_path
 
-    def save_model(self, joint_dict, part_dict, label_dict, parent_dict):
+    def save_model(self, joint_dict, part_dict, label_dict, parent_dict, f_path):
         if self.f_name is None:
             self.f_name = self.prompt_save_file()
             if self.f_name is None:                 # Select folder cancelled
@@ -181,7 +182,8 @@ class Serializer:
             "joints": serialized_joints,
             "parts": serialized_parts,
             "labels": label_dict,
-            "parents": parent_dict
+            "parents": parent_dict,
+            "file_path": f_path
         }
 
         with open(self.f_name, "w") as file:
