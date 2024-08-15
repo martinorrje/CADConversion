@@ -176,5 +176,5 @@ class Serializer:
             "file_path": f_path
         }
 
-        with open(self.f_name, "w") as file:
+        with open(f_name, "w") as file:
             json.dump(saved_data, file)

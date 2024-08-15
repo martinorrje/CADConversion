@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+import logging
+import argparse
+import sys
+
+from model.muj_conversion import MujConverter
+from model.serializer import Serializer
+
+
+parser = argparse.ArgumentParser(
+    "Convert annotated a CAD model to a Mujoco model."
+)
+
+parser.add_argument(
+    "file",
+    help=f"Annotated CAD model (default: standard input)",
+)
+parser.add_argument(
+    "-d",
+    "--debug",
+    action=argparse.BooleanOptionalAction,
+    help=f"Debug conversion",
+)
+
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level=logging.DEBUG)
+
+serializer = Serializer()
+
+m = serializer.load_model(args.file)
+mc = MujConverter(*m)
+print(mc.convert())
