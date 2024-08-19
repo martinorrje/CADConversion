@@ -14,7 +14,6 @@ import json
 import base64
 
 from OCC.Core.gp import gp_Trsf, gp_Pnt, gp_Dir, gp_Ax1
-from PyQt5 import QtWidgets
 
 from .structures import Joint, Part
 
@@ -153,11 +152,7 @@ class Serializer:
             density=part_data["density"]
         )
 
-    def load_model(self):
-        f_name = self.prompt_open_file()
-        if not f_name:
-            return
-
+    def load_model(self, f_name):
         with open(f_name, "r") as file:
             loaded_data = json.load(file)
 
@@ -169,12 +164,7 @@ class Serializer:
 
         return joint_dict, part_dict, label_dict, parent_dict, f_path
 
-    def save_model(self, joint_dict, part_dict, label_dict, parent_dict, f_path):
-        if self.f_name is None:
-            self.f_name = self.prompt_save_file()
-            if self.f_name is None:                 # Select folder cancelled
-                return
-
+    def save_model(self, f_name, joint_dict, part_dict, label_dict, parent_dict, f_path):
         serialized_joints = {uid: self.serialize_joint(joint) for uid, joint in joint_dict.items()}
         serialized_parts = {uid: self.serialize_part(part_info) for uid, part_info in part_dict.items()}
 
@@ -186,23 +176,5 @@ class Serializer:
             "file_path": f_path
         }
 
-        with open(self.f_name, "w") as file:
+        with open(f_name, "w") as file:
             json.dump(saved_data, file)
-
-    def prompt_save_file(self):
-        prompt = 'Specify name for saved file.'
-        fname, selected_filter = QtWidgets.QFileDialog.getSaveFileName(None, prompt, './', "JSON files;;")
-
-        if not fname:
-            print("Save step cancelled.")
-            return
-        if not fname.endswith('.json'):
-            fname += '.json'
-
-        return fname
-
-    def prompt_open_file(self):
-        prompt = 'Select file to load'
-        f_path, __ = QtWidgets.QFileDialog.getOpenFileName(
-            None, prompt, './', "JSON files (*.json)")
-        return f_path

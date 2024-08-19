@@ -13,12 +13,34 @@ lgc = LinearGraphConverter()
 serializer = Serializer()
 watcher = None
 
+def prompt_save_file():
+    prompt = 'Specify name for saved file.'
+    fname, selected_filter = QtWidgets.QFileDialog.getSaveFileName(None, prompt, './', "JSON files;;")
+
+    if not fname:
+        print("Save step cancelled.")
+        return
+    if not fname.endswith('.json'):
+        fname += '.json'
+
+    return fname
+
+def prompt_open_file():
+    prompt = 'Select file to load'
+    f_path, __ = QtWidgets.QFileDialog.getOpenFileName(
+        None, prompt, './', "JSON files (*.json)")
+    return f_path
 
 def open_doc():
     global watcher
-    result = serializer.load_model()
+
+    f_name = prompt_open_file()
+    if not f_name:
+        return
+    result = serializer.load_model(f_name)
     if result is None:
         return
+
     win.tree_view.clearSelection()
     win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, f_path = result
 
@@ -48,7 +70,10 @@ def open_doc():
 
 
 def save_doc():
-    serializer.save_model(win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, win.file_to_watch)
+    f_name = prompt_save_file()
+    if f_name is None:                 # Select folder cancelled
+        return
+    serializer.save_model(f_name, win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, win.file_to_watch)
 
 
 def add_joint():
