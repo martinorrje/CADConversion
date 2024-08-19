@@ -1,21 +1,25 @@
+#!/usr/bin/env python3
+
+import json
 import os
 import sys
 from ui.mainwindow import MainWindow, dm
 from model.conversion import LinearGraphConverter, create_graph
-from model.serializer import Serializer
+#from model.serializer import Serializer
+from model.structures import Joint, Part
 from model.modelupdate import Watcher
 
 from model import docmodel
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QFileDialog
 
 lgc = LinearGraphConverter()
-serializer = Serializer()
+#serializer = Serializer()
 watcher = None
 
 def prompt_save_file():
     prompt = 'Specify name for saved file.'
-    fname, selected_filter = QtWidgets.QFileDialog.getSaveFileName(None, prompt, './', "JSON files;;")
+    fname, selected_filter = QFileDialog.getSaveFileName(None, prompt, './', "JSON files (*.json);;")
 
     if not fname:
         print("Save step cancelled.")
@@ -27,22 +31,29 @@ def prompt_save_file():
 
 def prompt_open_file():
     prompt = 'Select file to load'
-    f_path, __ = QtWidgets.QFileDialog.getOpenFileName(
+    f_path, __ = QFileDialog.getOpenFileName(
         None, prompt, './', "JSON files (*.json)")
     return f_path
 
 def open_doc():
     global watcher
 
-    f_name = prompt_open_file()
-    if not f_name:
-        return
-    result = serializer.load_model(f_name)
-    if result is None:
+    fname = prompt_open_file()
+    if not fname:
         return
 
+    with open(fname, "r") as file:
+        blob = json.load(file)
+
+    joint_dict = {uid: Joint.load(joint_data) for uid, joint_data in blob["joints"].items()}
+    part_dict = {uid: Part.load(part_data) for uid, part_data in blob["parts"].items()}
+    label_dict = blob["labels"]
+    parent_dict = blob["parents"]
+    f_path = blob["file_path"]
+
+
     win.tree_view.clearSelection()
-    win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, f_path = result
+    #win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, f_path = result
 
     if os.path.exists(f_path):
         win.file_to_watch = f_path
@@ -70,10 +81,24 @@ def open_doc():
 
 
 def save_doc():
-    f_name = prompt_save_file()
-    if f_name is None:                 # Select folder cancelled
+    fname = prompt_save_file()
+    if fname is None:                 # Select folder cancelled
         return
-    serializer.save_model(f_name, win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, win.file_to_watch)
+
+    # win.joint_dict, dm.part_dict, dm.label_dict, dm.parent_dict, win.file_to_watch
+    serialized_joints = {uid: joint.dump() for uid, joint in win.joint_dict.items()}
+    serialized_parts = {uid: part_info.dump() for uid, part_info in dm.part_dict.items()}
+
+    blob = {
+        "joints": serialized_joints,
+        "parts": serialized_parts,
+        "labels": dm.label_dict,
+        "parents": dm.parent_dict,
+        "file_path": win.file_to_watch,
+    }
+
+    with open(fname, "w") as f:
+        json.dump(blob, f, indent=2)
 
 
 def add_joint():

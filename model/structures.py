@@ -1,86 +1,63 @@
-from dataclasses import dataclass
+import marshmallow as mm
 import typing
 
+from dataclasses import dataclass
+from typing import Optional, List, Any
+
+from OCC.Core.AIS import AIS_Trihedron, AIS_Line
+from OCC.Core.Quantity import Quantity_Color
+from OCC.Core.TopLoc import TopLoc_Location
+from OCC.Core.TopoDS import TopoDS_Shape
+
+from .serialization import Serializable
+
 
 @dataclass
-class Joint:
-    first_component: "typing.Any"
-    second_component: "typing.Any"
-    name: str
+class Joint(Serializable):
+    first_component: str
+    second_component: str
     parent_uid: str
     child_uid: str
-    origin: "typing.Any"
-    axis: "typing.Any"
-    center_trihedron: "typing.Any"
-    axis_line: "typing.Any"
-    joint_type: "typing.Any"
-    joint_friction: "typing.Any"
-    item: "typing.Any"
+    origin: List[float]
+    axis: List[float]
+    center_trihedron: AIS_Trihedron
+    axis_line: AIS_Line
+    joint_type: str
+    joint_friction: float
+    item: Optional["PyQt5.QtWidgets.QTreeWidgetItem"] = None
 
-    def __init__(
-        self,
-        first_component,
-        second_component,
-        parent_uid,
-        child_uid,
-        origin,
-        axis,
-        center_trihedron,
-        axis_line,
-        joint_type,
-        joint_friction,
-        item=None,
-    ):
-        self.first_component = first_component
-        self.second_component = second_component
-        self.name = f"{first_component} to {second_component}"
-        self.parent_uid = parent_uid
-        self.child_uid = child_uid
-        self.origin = origin
-        self.axis = axis
-        self.center_trihedron = center_trihedron
-        self.axis_line = axis_line
-        self.joint_type = joint_type
-        self.joint_friction = joint_friction
-        self.item = item
+    @property
+    def name(self):
+        return f"{self.first_component} to {self.second_component}"
 
 
 @dataclass
-class Part:
-    shape: "typing.Any"
+class Part(Serializable):
+    shape: TopoDS_Shape
     name: str
-    color: "typing.Any"
-    loc: "typing.Any"
-    mass: "typing.Any" = None
-    density: "typing.Any" = None
+    color: Quantity_Color
+    loc: TopLoc_Location
+    mass: Optional[float] = None
+    density: Optional[float] = None
 
 
+@dataclass
 class JointProperty:
-    def __init__(
-        self, name, parent, child, origin, axis, joint_type, joint_friction
-    ):
-        self.name = name
-        self.parent = parent
-        self.child = child
-        self.origin = origin
-        self.axis = axis
-        self.joint_type = joint_type
-        self.joint_friction = joint_friction
+    name: str
+    parent: str
+    child: str
+    origin: List[float]
+    axis: List[float]
+    joint_type: str
+    joint_friction: float
 
 
+@dataclass
 class PartProperty:
-    def __init__(
-        self,
-        name,
-        shape,
-        center_of_mass=None,
-        inertia=None,
-        mass=None,
-        density=None,
-    ):
-        self.name = name
-        self.shape = shape
-        self.center_of_mass = center_of_mass
-        self.inertia = inertia
-        self.mass = mass
-        self.density = density
+    name: str
+    shape: TopoDS_Shape
+    center_of_mass: Optional[Any] = None
+    inertia: Optional[Any] = None
+    mass: Optional[float] = None
+    density: Optional[float] = None
+
