@@ -1,8 +1,5 @@
-import marshmallow as mm
-import typing
-
 from dataclasses import dataclass
-from typing import Optional, List, Any
+from typing import Optional, List, Dict, Any
 
 from OCC.Core.AIS import AIS_Trihedron, AIS_Line
 from OCC.Core.Quantity import Quantity_Color
@@ -61,3 +58,22 @@ class PartProperty:
     mass: Optional[float] = None
     density: Optional[float] = None
 
+
+# TODO: Refactor other files to use serializable structures instead of keeping track of dicts
+
+@dataclass
+class Label(Serializable):
+    entry: str
+    name: str
+    parent_uid: Optional[str]
+    ref_entry: Optional[str]
+    is_assembly: bool
+
+
+@dataclass
+class Model(Serializable):
+    step_file: str
+    parents: Dict[str, List[str]]
+    labels: Dict[str, Label]
+    joints: Dict[str, Joint]
+    parts: Dict[str, Part]

@@ -6,7 +6,7 @@ import base64
 import tempfile
 
 from marshmallow import Schema, fields
-from marshmallow.fields import Field, ValidationError
+from marshmallow.fields import Field, Nested, ValidationError
 from typing import get_origin, get_args, Union
 
 from OCC.Core import BRepTools
@@ -133,6 +133,9 @@ def typemap(t, required=True):
         else:
             return None
     else:
+        if isinstance(t, Serializable):
+            return Nested(t.schema(), required=required)
+
         rt = TYPE_MAPPING.get(t)
         if rt is not None:
             return rt(required=required)
@@ -143,13 +146,13 @@ def typemap(t, required=True):
 class Serializable:
     """Base functions for serializable dataclasses."""
     @classmethod
-    def schema(obj):
+    def schema(obj, required=True):
         tyflds = {
             fld.name: typemap(fld.type)
             for fld in obj.__dataclass_fields__.values()
             if typemap(fld.type) is not None
         }
-        return Schema.from_dict(tyflds)()
+        return Schema.from_dict(tyflds, name=f"{obj.__name__}Schema")()
 
     def dump(self):
         return self.schema().dump(self)
@@ -157,5 +160,5 @@ class Serializable:
     @classmethod
     def load(obj, blob):
         filter_blob = {k: v for k, v in blob.items() if v is not None}
-        return obj.schema().load(filter_blob)
+        return obj(**obj.schema().load(filter_blob))
 

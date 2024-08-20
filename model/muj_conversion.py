@@ -1,8 +1,12 @@
 import re
 import logging
+import os
+import pathlib
+import shutil
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 
+from OCC.Core.StlAPI import StlAPI_Writer
 from OCC.Core.TopLoc import TopLoc_Location
 from OCC.Core.gp import gp_Pnt, gp_Vec, gp_Trsf
 
@@ -55,10 +59,12 @@ class MujConverter:
         return MujConverter.trf_to_pos(loc.Transformation())
 
     def __init__(
-        self, joints, parts, labels, parents, *args, pos_scale_factor=0.01
+        self, joints, parts, labels, parents, output_dir, *args, pos_scale_factor=0.01
     ) -> None:
         self._JOINTS = joints
         self._PARTS = parts
+
+        self.output_dir = pathlib.Path(output_dir)
 
         # Use a more convenient representation for labels entries
         labels = {
@@ -125,6 +131,11 @@ class MujConverter:
         base_link_name_pattern=r"base",
         options={"gravity": "0 0 -9.81"},
     ):
+        # Begin by clearing directory for us to be able to use it
+        if os.path.exists(self.output_dir):
+            shutil.rmtree(self.output_dir)
+        os.makedirs(self.output_dir)
+
         # Find base links
         base_links = list(
             filter(
@@ -177,6 +188,10 @@ class MujConverter:
 
         # Add actuator element
         actuator = ET.SubElement(mu_model, "actuator")
+
+        self.assets = assets
+        self.world = world
+        self.actuator = actuator
 
         # Add light
         ET.SubElement(
@@ -325,7 +340,9 @@ class MujConverter:
                 return
 
         ET.indent(mu_model)
-        return ET.tostring(mu_model, encoding="unicode")
+
+        with open(self.output_dir / "model.xml", "w+") as f:
+            f.write(ET.tostring(mu_model, encoding="unicode"))
 
     def _create_successor_list(self):
         successors = {}
@@ -341,6 +358,31 @@ class MujConverter:
     def _scale_pos(self, pos):
         return list(map(lambda p: self.POS_SCALE_FACTOR * p, pos))
 
+    def _add_mesh(self, name, shape):
+        # Converts mesh from internal representation to STL
+        chrange = lambda a, b: set(chr(i) for i in range(ord(a), (ord(b)+1)))
+        valid_chars = chrange('a', 'z') | chrange('A', 'Z')
+        filename = name
+        for c in name:
+            if (not c.isalnum()) and (c not in ["_", "-"]):
+                filename = filename.replace(c, "_")
+
+        filename = filename + ".stl"
+        filepath = self.output_dir / filename
+
+        w = StlAPI_Writer()
+        w.SetASCIIMode(False)
+        w.Write(shape, str(filepath))
+        ET.SubElement(
+            self.assets,
+            "mesh",
+            attrib={
+                "name": name,
+                #"scale": "0.001 0.001 0.001",
+                "file": str(filename),
+            }
+        )
+
     def _add_body(self, parent, part, pos, quat):
         pos = self._scale_pos(pos)
         return ET.SubElement(
@@ -355,34 +397,41 @@ class MujConverter:
 
     def _add_joint(self, actuator, body, joint, pos, axis):
         pos = self._scale_pos(pos)
-        match joint.joint_type:
-            case "Revolute":
-                joint_elem = ET.SubElement(
-                    body,
-                    "joint",
-                    attrib={
-                        "name": joint.name,
-                        "pos": f"{pos[0]} {pos[1]} {pos[2]}",
-                        "axis": f"{axis[0]} {axis[1]} {axis[2]}",
-                    },
-                )
-                ET.SubElement(
-                    actuator,
-                    "position",
-                    attrib={"name": joint.name, "joint": joint.name},
-                )
-                return joint_elem
-            case type:
-                logger.error(
-                    f"Unsupported joint type, {type}, for joint, {joint.name}"
-                )
-                return
+        if joint.joint_type == "Revolute":
+            joint_elem = ET.SubElement(
+                body,
+                "joint",
+                attrib={
+                    "name": joint.name,
+                    "pos": f"{pos[0]} {pos[1]} {pos[2]}",
+                    "axis": f"{axis[0]} {axis[1]} {axis[2]}",
+                },
+            )
+            ET.SubElement(
+                actuator,
+                "position",
+                attrib={"name": joint.name, "joint": joint.name},
+            )
+            return joint_elem
+        else:
+            logger.error(f"Unsupported joint type, {joint.joint_type}, for joint, {joint.name}")
+            return
 
     def _add_geom(self, body, part, pos=None, quat=None):
-        geom = ET.SubElement(
-            body,
-            "geom",
-            attrib={"type": "box", "size": "0.02 0.02 0.02"},
+        #geom = ET.SubElement(
+        #    body,
+        #    "geom",
+        #    attrib={"type": "box", "size": "0.02 0.02 0.02"},
+        #)
+        self._add_mesh(part.name, part.shape)
+        geom = ET.SubElement(body, "geom", attrib={
+                "type": "mesh",
+                "name": f"{part.name}__{part.name}",
+                "mesh": part.name,
+                "group": "0",
+                "friction": "0.2 0.005 0.0001",
+                "euler": "0 -0 0",
+            },
         )
         if part.mass is not None:
             geom.set("mass", str(part.mass))

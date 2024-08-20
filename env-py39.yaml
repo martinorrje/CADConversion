@@ -8,3 +8,4 @@ dependencies:
   - python-graphviz
   - watchdog
   - marshmallow
+  - mujoco-python

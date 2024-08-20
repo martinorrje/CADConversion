@@ -1,35 +1,45 @@
 #!/usr/bin/env python3
 
+import json
 import logging
 import argparse
 import sys
 
 from model.muj_conversion import MujConverter
-from model.serializer import Serializer
+from model.structures import Part, Joint
 
 
-parser = argparse.ArgumentParser(
-    "Convert annotated a CAD model to a Mujoco model."
-)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser("Convert annotated a CAD model to a Mujoco model.")
+    parser.add_argument("file",
+                        help=f"Annotated CAD model (default: standard input)")
+    parser.add_argument( "-d", "--debug", action=argparse.BooleanOptionalAction,
+                        help=f"Debug conversion")
+    parser.add_argument( "-o", "--output-dir", dest="output_dir", type=str, default="mujoco_gen",
+                        help=f"Output directory for generated files. (Default: mujoco_gen)")
+    args = parser.parse_args()
 
-parser.add_argument(
-    "file",
-    help=f"Annotated CAD model (default: standard input)",
-)
-parser.add_argument(
-    "-d",
-    "--debug",
-    action=argparse.BooleanOptionalAction,
-    help=f"Debug conversion",
-)
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
 
-args = parser.parse_args()
 
-if args.debug:
-    logging.basicConfig(level=logging.DEBUG)
+    with open(args.file, "r") as f:
+        blob = json.load(f)
 
-serializer = Serializer()
+    joint_dict = {uid: Joint.load(joint_data) for uid, joint_data in blob["joints"].items()}
+    part_dict = {uid: Part.load(part_data) for uid, part_data in blob["parts"].items()}
+    label_dict = blob["labels"]
+    parent_dict = blob["parents"]
+    f_path = blob["file_path"]
 
-m = serializer.load_model(args.file)
-mc = MujConverter(*m)
-print(mc.convert())
+    print(joint_dict)
+    print(part_dict)
+
+    mc = MujConverter(
+        joints=joint_dict,
+        parts=part_dict,
+        labels=label_dict,
+        parents=parent_dict,
+        output_dir=args.output_dir,
+    )
+    mc.convert()
