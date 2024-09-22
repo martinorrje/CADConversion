@@ -30,9 +30,6 @@ def open_doc():
 
         if not docmodel.same_doc_model(dm, new_dm):
             result = win.show_update_model_popup()
-            if result is False:
-                win.build_tree()
-                win.redraw()
 
         if watcher is None:
             watcher = Watcher(f_path, win)
@@ -40,6 +37,9 @@ def open_doc():
             watcher.stop()
             watcher.watch_new_file(f_path)
         watcher.run()
+
+    win.build_tree()
+    win.redraw()
 
     win.find_root()
     win.update_parentuid()

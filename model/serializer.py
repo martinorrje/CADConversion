@@ -165,7 +165,7 @@ class Serializer:
         part_dict = {uid: self.deserialize_part(part_data) for uid, part_data in loaded_data["parts"].items()}
         label_dict = loaded_data["labels"]
         parent_dict = loaded_data["parents"]
-        f_path = loaded_data["file_path"]
+        f_path = loaded_data.get("file_path", "")
 
         return joint_dict, part_dict, label_dict, parent_dict, f_path
 
