@@ -1,7 +1,7 @@
 import os
 import sys
 from ui.mainwindow import MainWindow, dm
-from model.conversion import LinearGraphConverter, create_graph
+from model.conversion import LinearGraphConverter, MJCFConverter, create_graph
 from model.serializer import Serializer
 from model.modelupdate import Watcher
 
@@ -140,6 +140,5 @@ if __name__ == "__main__":
 
     convert_menu = win.add_menu("Export")
     win.add_function_to_menu("Export", "Export linear graph", export_linear_graph)
-
     win.setFocus()
     sys.exit(app.exec_())
