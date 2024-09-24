@@ -1,0 +1,12 @@
+name: cadconv-py39-wayland
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pythonocc-core=7.6.2
+  - pyqt=5
+  - qt-wayland=5
+  - python-graphviz
+  - watchdog
+  - marshmallow
+  - mujoco-python
