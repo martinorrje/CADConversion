@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.canvas)
 
         LOG.debug("Letup the left dock...")
-        self.explorer_dock = widgets.ExplorerDock(self)
+        self.explorer_dock = widgets.ExplorerDock(self, self.canvas)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.explorer_dock)
 
         LOG.debug("Setup the top bar menu...")
@@ -132,6 +132,7 @@ class MainWindow(QMainWindow):
             self.dm.load_step(filename)
             self.dm.parse()
             self.canvas.redraw(self.dm)
+            self.explorer_dock.construct(self.dm)
         except Exception as e:
             self.dm = None
             LOG.error(traceback.format_exc())

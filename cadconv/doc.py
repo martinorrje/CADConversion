@@ -67,7 +67,7 @@ class DocModel(Serializable):
         self._uid_nextvalue[entry] = value
         return entry + "." + str(value)
 
-    def _get_uid_parents(self, uid) -> List[str]:
+    def uid_parents(self, uid) -> List[str]:
         """
         Returns a list of parents, lowest index being nearest parent and the
         highest index being the root uid.
@@ -78,6 +78,16 @@ class DocModel(Serializable):
             parents.append(label.parent_uid)
             label = self.labels[label.parent_uid]
         return parents
+
+    def uid_children(self, uid) -> List[str]:
+        """
+        Returns a list of children uid's to the specified uid.
+        """
+        return [
+            c_uid
+            for c_uid, lbl in self.labels.items()
+            if lbl.parent_uid == uid
+        ]
 
     def load_step(self, path):
         LOG.debug(f"Loading STEP file from {path} into this DocModel")
@@ -119,8 +129,8 @@ class DocModel(Serializable):
         root_uid = self._gen_uid(root_entry)
         LOG.debug(f"Root Entry: {root_entry} | Root UID: {root_uid}")
 
-        LOG.debug("Recording the Root UID")
-        self.root_uid = root_uid
+        LOG.debug("Recording the Part Root UID")
+        self.part_root_uid = root_uid
 
         self.labels[root_uid] = Label(
             entry = root_entry,
@@ -173,7 +183,7 @@ class DocModel(Serializable):
                 # Multiply parent locations to arrive at an absolute location
                 locs = [
                     self.labels[p_uid].loc
-                    for p_uid in reversed([uid] + self._get_uid_parents(uid))
+                    for p_uid in reversed([uid] + self.uid_parents(uid))
                 ]
                 abs_loc = locs[0]
                 for p_loc in locs[1:]:

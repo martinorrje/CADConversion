@@ -21,24 +21,32 @@ LOG.addHandler(logging.NullHandler())
 
 
 class ExplorerDock(QDockWidget):
-    def __init__(self, parent, name="Assembly/Part Structure"):
+    def __init__(self, parent, canvas, name="Assembly and Joints"):
         super().__init__(name, parent)
+        self.canvas = canvas
+
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.setFeatures(QDockWidget.DockWidgetClosable)
 
-        self.tree = ExplorerTreeView(self)
+        self.tree = ExplorerTreeView(self, canvas)
         self.setWidget(self.tree)
 
 
+    def construct(self, dm: DocModel):
+        self.tree.construct(dm)
+
+
 class ExplorerTreeView(QTreeWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, canvas):
         super().__init__(parent)
+        self.canvas = canvas
+
         self.header().setHidden(True)
 
-        self.part_root = QTreeWidgetItem(self, ["Parts"])
+        self.assembly_root = QTreeWidgetItem(self, ["Assembly"])
         self.joint_root = QTreeWidgetItem(self, ["Joints"])
 
-        test_part = QTreeWidgetItem(self.part_root, ["Test Part"])
+        self.assembly = {}
 
         #self.setSelectionMode(self.ExtendedSelection)  # Multiple items can be selected at the same time
         #self.setContextMenuPolicy(Qt.CustomContextMenu)  # Custom context menu when right-clicking items
@@ -48,6 +56,37 @@ class ExplorerTreeView(QTreeWidget):
         #self.joint_pop_menu = QMenu(self)
         #self.components_parent = None
 
+        # Custom signal handlers for selecting items
+        self.itemClicked.connect(self.on_select)
+
+    def construct(self, dm: DocModel):
+        self.construct_assembly(dm, dm.part_root_uid)
+
+    def construct_assembly(self, dm: DocModel, uid):
+        lbl = dm.labels[uid]
+        if lbl.parent_uid is None:
+            parent_item = self.assembly_root
+        else:
+            parent_item = self.assembly[lbl.parent_uid]
+
+        item = QTreeWidgetItem(parent_item, [lbl.name])
+        self.assembly[uid] = item
+
+        for child_uid in dm.uid_children(uid):
+            self.construct_assembly(dm, uid=child_uid)
+
+    def on_select(self, item, *args):
+        selected_assembly = None
+        for uid, a_item in self.assembly.items():
+            if a_item == item:
+                selected_assembly = uid
+                break
+
+        LOG.debug(f"{item} {selected_assembly}")
+        self.canvas.highlight_part(selected_assembly)
+
+
+    # OLD BELOW, FIGURE OUT WHAT IT DOES
     def _initialize_context_menus(self):
         self.component_pop_menu = self._create_component_menu()
         self.joint_pop_menu = self._create_joint_menu()
