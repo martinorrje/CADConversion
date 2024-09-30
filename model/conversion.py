@@ -21,43 +21,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # set to DEBUG | INFO | ERROR
 
 
-def quaternion_to_axis_angle(q):
-    """
-    Convert a quaternion to axis-angle representation.
-
-    Args:
-        q (list or np.ndarray): Quaternion (q0, q1, q2, q3), where:
-                                q0 is the scalar part
-                                q1, q2, q3 are the vector part (x, y, z)
-
-    Returns:
-        axis (np.ndarray): Axis of rotation (3D vector)
-        angle (float): Rotation angle in radians
-    """
-
-    # Ensure the quaternion is a numpy array
-    q = np.array(q, dtype=float)
-
-    # Normalize the quaternion
-    q = q / np.linalg.norm(q)
-
-    q0 = q[0]  # scalar part
-    q_vec = q[1:]  # vector part (x, y, z)
-
-    # Compute the angle (theta) from the scalar part
-    angle = 2 * np.arccos(q0)
-
-    # Compute the axis of rotation
-    sin_theta_half = np.sqrt(1 - q0 ** 2)
-
-    # Avoid division by zero for zero rotation angle
-    if sin_theta_half < 1e-6:
-        axis = np.array([1, 0, 0])  # Arbitrary axis when angle is zero
-    else:
-        axis = q_vec / sin_theta_half
-
-    return axis, angle
-
 class ConversionClass:
     def __init__(self, part_dict, joint_dict):
         self.part_properties = {}      # Keyed by uid
@@ -69,7 +32,7 @@ class ConversionClass:
     def get_properties(self, part_dict, joint_dict):
         # Process parts
         for uid, part in part_dict.items():
-            body_name = part.name.replace(':', '_').replace(' ', '_')
+            body_name = f"{part.name.replace(':', '_').replace(' ', '_')}_{uid}"
             self.part_properties[uid] = PartProperty(
                 name=body_name,  # Processed name
                 shape=part.shape,
@@ -361,7 +324,8 @@ class MJCFGenerator(ConversionClass):
 
     def add_joints(self):
         for joint in self.joint_properties.values():
-            self.add_joint(joint)
+            if joint.joint_type != 'Fixed':
+                self.add_joint(joint)
 
     def trsf_to_pos_quat(self, trsf):
         # Extract translation
@@ -378,8 +342,6 @@ class MJCFGenerator(ConversionClass):
         z = rotation_quat.Z()
 
         quat = np.array([w, x, y, z])
-
-        axis_angle = quaternion_to_axis_angle(quat)
 
         # Normalize the quaternion
         quat = quat / np.linalg.norm(quat)

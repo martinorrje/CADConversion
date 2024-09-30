@@ -114,6 +114,7 @@ def export_mjcf():
     directory_path = mjcf_gen.get_mjcf_folder()
     if not directory_path:
         return
+    mjcf_gen.output_dir = directory_path
     mjcf_gen.generate()
 
 if __name__ == "__main__":
