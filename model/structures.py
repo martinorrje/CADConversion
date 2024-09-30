@@ -16,7 +16,7 @@ class Joint:
 
 
 class JointProperty:
-    def __init__(self, name, parent, child, origin, axis, joint_type, joint_friction):
+    def __init__(self, name, parent, child, origin, axis, joint_type, joint_friction, child_uid=None, parent_uid=None):
         self.name = name
         self.parent = parent
         self.child = child
@@ -24,12 +24,15 @@ class JointProperty:
         self.axis = axis
         self.joint_type = joint_type
         self.joint_friction = joint_friction
+        self.parent_uid = parent_uid
+        self.child_uid = child_uid
 
 
 class PartProperty:
-    def __init__(self, name, shape, center_of_mass=None, inertia=None, mass=None, density=None):
+    def __init__(self, name, shape, loc=None, center_of_mass=None, inertia=None, mass=None, density=None):
         self.name = name
         self.shape = shape
+        self.loc = loc
         self.center_of_mass = center_of_mass
         self.inertia = inertia
         self.mass = mass

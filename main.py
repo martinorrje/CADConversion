@@ -1,7 +1,7 @@
 import os
 import sys
 from ui.mainwindow import MainWindow, dm
-from model.conversion import LinearGraphConverter, create_graph
+from model.conversion import LinearGraphConverter, MJCFGenerator, create_graph
 from model.serializer import Serializer
 from model.modelupdate import Watcher
 
@@ -9,7 +9,6 @@ from model import docmodel
 
 from PyQt5.QtWidgets import QApplication
 
-lgc = LinearGraphConverter()
 serializer = Serializer()
 watcher = None
 
@@ -102,14 +101,20 @@ def update_model():
 
 
 def export_linear_graph():
+    lgc = LinearGraphConverter(dm.part_dict, win.joint_dict)
     directory_path = lgc.get_graph_folder()
     if not directory_path:
         return
-    lgc.convert_to_graph(dm.part_dict, win.joint_dict)
     lgc.convert_to_json(directory_path)
     create_graph(directory_path + '/data.json', 'translation_graph')
     create_graph(directory_path + '/data.json', 'rotation_graph')
 
+def export_mjcf():
+    mjcf_gen = MJCFGenerator(dm.part_dict, win.joint_dict)
+    directory_path = mjcf_gen.get_mjcf_folder()
+    if not directory_path:
+        return
+    mjcf_gen.generate()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -140,5 +145,6 @@ if __name__ == "__main__":
 
     convert_menu = win.add_menu("Export")
     win.add_function_to_menu("Export", "Export linear graph", export_linear_graph)
+    win.add_function_to_menu("Export", "Export MJCF", export_mjcf)
     win.setFocus()
     sys.exit(app.exec_())
