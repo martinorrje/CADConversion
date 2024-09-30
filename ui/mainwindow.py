@@ -42,11 +42,20 @@ class SnappingLogic:
     def __init__(self, display):
         self._display = display
 
-    def snap_to_circular_edge(self, curve):
-        """Returns the center of the selected circle, and returns it as a gp_Pnt"""
-        circle_center = curve.Circle().Location()
-        x, y, z = circle_center.Coord()
-        return gp_Pnt(x, y, z)
+    def snap_to_circular_edge(self, curve, view_dir):
+        """Returns a Geom_Axis2Placement at the center of the selected circle,
+        with z-axis pointing normal to the circle's plane."""
+        circle = curve.Circle()
+        circle_center = circle.Location()
+        normal_dir = circle.Axis().Direction()  # z-axis of the circle's plane
+        x_dir = circle.XAxis().Direction()  # x-axis of the circle's plane
+
+        # Adjust the normal direction based on the view direction
+        dot_product = normal_dir.Dot(view_dir)
+        if dot_product > 0:
+            normal_dir.Reverse()
+
+        return Geom_Axis2Placement(circle_center, normal_dir, x_dir)
 
     def snap_to_edge(self, evt, shape):
         """Returns the location of the closest position on the edge represented by shape, when measured from the mouse
@@ -143,8 +152,7 @@ class OriginViewer3d(qtDisplay.qtViewer3d):
         """Overridden mouseMoveEvent method, that converts mouse position into world coordinates x,y,z and then
         checks if a shape is being hovered over. If a shape is being hovered over, and this shape is an edge, vertex
         or face, appropriate methods for retrieving snapping locations are called. A trihedron which follows the mouse
-        are then placed at either the mouse position or at a retrieved snapping location."""
-
+        is then placed at either the mouse position or at a retrieved snapping location."""
         super().mouseMoveEvent(evt)
 
         x, y, z = self._display.View.ConvertToGrid(evt.x(), evt.y())
@@ -161,8 +169,9 @@ class OriginViewer3d(qtDisplay.qtViewer3d):
                 if shape.ShapeType() == TopAbs_EDGE:
                     curve = BRepAdaptor_Curve(shape)
                     if curve.GetType() == GeomAbs_Circle:
-                        origin = self.snapper.snap_to_circular_edge(curve)
-                        loc = Geom_Axis2Placement(origin, self.dir, self.x_dir)
+                        x, y, z, vx, vy, vz = self._display.View.ConvertWithProj(evt.x(), evt.y())
+                        ray_dir = gp_Dir(vx, vy, vz)
+                        loc = self.snapper.snap_to_circular_edge(curve, ray_dir)
                     else:
                         self.edge_snap = self.snapper.snap_to_edge(evt, shape)
                         loc = Geom_Axis2Placement(gp_Pnt(x, y, z), self.dir, self.x_dir)

@@ -8,8 +8,8 @@ from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB, Quantity_NOC_RED
 from OCC.Core.TopAbs import TopAbs_SHAPE, TopAbs_VERTEX, TopAbs_EDGE, TopAbs_FACE
 from OCC.Core.TopExp import TopExp_Explorer
 from OCC.Core.TopoDS import TopoDS_Vertex, TopoDS_Edge, TopoDS_Face, TopoDS_Shape
-from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Ax1
-from PyQt5 import QtWidgets
+from OCC.Core.gp import gp_Pnt, gp_Dir, gp_Ax1, gp_Trsf, gp_Ax3
+from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 
 from .mainwindow import dm
@@ -163,18 +163,38 @@ class JointManager:
             self.joint_selection_widget.select_origin_popup.exec_()
             return
         try:
-            x_dir = float(self.joint_selection_widget.line_edit_x.text())
-            y_dir = float(self.joint_selection_widget.line_edit_y.text())
-            z_dir = float(self.joint_selection_widget.line_edit_z.text())
+            x_dir_input = float(self.joint_selection_widget.line_edit_x.text())
+            y_dir_input = float(self.joint_selection_widget.line_edit_y.text())
+            z_dir_input = float(self.joint_selection_widget.line_edit_z.text())
         except ValueError:
             return
         # If an axis was already submitted for this joint, remove it
         if self.ais_axis is not None:
             self.canvas._display.Context.Remove(self.ais_axis, False)
-        self.joint_axis = [x_dir, y_dir, z_dir]
-        origin = gp_Pnt(self.joint_origin[0], self.joint_origin[1], self.joint_origin[2])
-        dir = gp_Dir(x_dir, y_dir, z_dir)
-        axis = gp_Ax1(origin, dir)
+        # Create local direction vector from user input
+        local_dir = gp_Dir(x_dir_input, y_dir_input, z_dir_input)
+        # Get the trihedron's axis placement
+        if self.joint_origin_trihedron is None:
+            return
+        axis_placement = self.joint_origin_trihedron.Component()
+        # Extract the origin and orientation from the axis placement
+        origin = axis_placement.Location()
+        z_dir = axis_placement.Direction()
+        x_dir = axis_placement.XDirection()
+        # Create the local coordinate system
+        local_ax3 = gp_Ax3(origin, z_dir, x_dir)
+        # Create the global coordinate system (world axes)
+        global_ax3 = gp_Ax3()
+        # Create transformation from local to global coordinate system
+        trsf = gp_Trsf()
+        trsf.SetTransformation(local_ax3, global_ax3)
+        # Transform the local direction vector into the global coordinate system
+        global_dir = local_dir.Transformed(trsf)
+        # Store the transformed axis
+        self.joint_axis = [global_dir.X(), global_dir.Y(), global_dir.Z()]
+        # Create and display the axis line
+        axis_point = gp_Pnt(self.joint_origin[0], self.joint_origin[1], self.joint_origin[2])
+        axis = gp_Ax1(axis_point, global_dir)
         axis_line = Geom_Line(axis)
         self.ais_axis = AIS_Line(axis_line)
         self.canvas._display.Context.Display(self.ais_axis, True)
@@ -205,9 +225,23 @@ class JointManager:
             # First check if the edge is a circular feature
             curve = BRepAdaptor_Curve(feature[0])  # Retrieve the curve from the edge
             if curve.GetType() == GeomAbs_Circle:  # Check if the curve represents a circle
-                # The shape that is hovered over is a circular feature, retrieve its center
-                circle_center = curve.Circle().Location()
-                self.mark_joint_origin(circle_center)
+                circle = curve.Circle()
+                circle_center = circle.Location()
+                normal_dir = circle.Axis().Direction()
+                x_dir = circle.XAxis().Direction()
+
+                # Adjust normal direction based on view direction
+                x, y, z, vx, vy, vz = self.canvas._display.View.ConvertWithProj(
+                    self.canvas.mapFromGlobal(QtGui.QCursor.pos()).x(),
+                    self.canvas.mapFromGlobal(QtGui.QCursor.pos()).y()
+                )
+                view_dir = gp_Dir(vx, vy, vz)
+                dot_product = normal_dir.Dot(view_dir)
+                if dot_product > 0:
+                    normal_dir.Reverse()
+
+                loc = Geom_Axis2Placement(circle_center, normal_dir, x_dir)
+                self.mark_joint_origin(circle_center, loc)
             elif self.canvas.edge_snap is not None:
                 self.mark_joint_origin(self.canvas.edge_snap)
         elif len(feature) == 1 and isinstance(feature[0],
@@ -223,9 +257,9 @@ class JointManager:
         """Place a trihedron at the location of the selected joint origin"""
         if self.joint_origin is None:
             return
-        dir = gp_Dir(0, 0, 1)
-        x_dir = gp_Dir(1, 0, 0)
         if loc is None:
+            dir = gp_Dir(0, 0, 1)
+            x_dir = gp_Dir(1, 0, 0)
             loc = Geom_Axis2Placement(gp_Pnt(self.joint_origin[0], self.joint_origin[1], self.joint_origin[2]), dir,
                                       x_dir)
         self.joint_origin_trihedron = AIS_Trihedron(loc)
